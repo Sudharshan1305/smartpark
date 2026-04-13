@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -16,12 +16,12 @@ const MyBookings = () => {
     const [expandedQR, setExpandedQR] = useState(null); // which booking's QR is shown
     const navigate = useNavigate();
 
-    const showNotif = (text, type) => {
+    const showNotif = useCallback((text, type) => {
         setNotif({ text, type });
         setTimeout(() => setNotif({ text: '', type: '' }), 3500);
-    };
+    }, []);
 
-    const fetchBookings = async () => {
+    const fetchBookings = useCallback(async () => {
         try {
             const res = await getMyBookings();
             setData({
@@ -30,9 +30,9 @@ const MyBookings = () => {
             });
         } catch { showNotif('Failed to load bookings.', 'error'); }
         finally { setLoading(false); }
-    };
+    }, [showNotif]);
 
-    useEffect(() => { fetchBookings(); }, []);
+    useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
     const handleCancelClick = (bookingId, slotName) => {
         setDialog({ open: true, bookingId, slotName, cancelling: false });

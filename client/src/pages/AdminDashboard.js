@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import ConfirmDialog from '../components/ConfirmDialog';
 import {
-    getAllSlots, addSlot, deleteSlot, getAllBookings,
+    addSlot, deleteSlot, getAllBookings,
     deleteBooking, getAnalytics
 } from '../services/api';
 import { Bar, Line } from 'react-chartjs-2';
@@ -16,7 +16,6 @@ ChartJS.register(CategoryScale, LinearScale, BarElement,
 
 const AdminDashboard = () => {
     const [bookingFilter, setBookingFilter] = useState('all');
-    const [slots, setSlots] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [analytics, setAnalytics] = useState(null);
     const [newSlotId, setNewSlotId] = useState('');
@@ -34,17 +33,16 @@ const AdminDashboard = () => {
         processing: false,
     });
 
-    const showNotif = (text, type) => {
+    const showNotif = useCallback((text, type) => {
         setNotif({ text, type });
         setTimeout(() => setNotif({ text: '', type: '' }), 3500);
-    };
+    }, []);
 
-    const fetchAll = async () => {
+    const fetchAll = useCallback(async () => {
         try {
-            const [slotsRes, bookingsRes, analyticsRes] = await Promise.all([
-                getAllSlots(), getAllBookings(), getAnalytics(),
+            const [bookingsRes, analyticsRes] = await Promise.all([
+                getAllBookings(), getAnalytics(),
             ]);
-            setSlots(slotsRes.data.slots);
             setBookings(bookingsRes.data.bookings);
             setAnalytics(analyticsRes.data);
         } catch {
@@ -52,9 +50,9 @@ const AdminDashboard = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showNotif]);
 
-    useEffect(() => { fetchAll(); }, []);
+    useEffect(() => { fetchAll(); }, [fetchAll]);
 
     const handleAddSlot = async () => {
         if (!newSlotId.trim()) return showNotif('Please enter a slot ID.', 'error');
@@ -68,11 +66,6 @@ const AdminDashboard = () => {
         } catch (err) {
             showNotif(err.response?.data?.message || 'Failed to add slot.', 'error');
         }
-    };
-
-    // Open dialog for slot delete
-    const handleDeleteSlotClick = (id, slotName) => {
-        setDialog({ open: true, type: 'slot', targetId: id, targetName: slotName, processing: false });
     };
 
     // Open dialog for booking delete

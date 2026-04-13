@@ -38,7 +38,7 @@ const bookingSchema = new mongoose.Schema(
 );
 
 // ── Auto-generate receipt ID before saving ────────────────────
-bookingSchema.pre('save', function (next) {
+bookingSchema.pre('save', function () {
     if (!this.receiptId) {
         this.receiptId =
             'SP-' +
@@ -46,7 +46,6 @@ bookingSchema.pre('save', function (next) {
             '-' +
             Math.random().toString(36).substring(2, 5).toUpperCase();
     }
-    next();
 });
 
 module.exports = mongoose.model('Booking', bookingSchema);
