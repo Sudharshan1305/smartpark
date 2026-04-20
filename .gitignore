@@ -8,7 +8,7 @@ server/.env
 .env
 
 # React build output
-client/build/
+#client/build/
 
 # OS files
 .DS_Store
