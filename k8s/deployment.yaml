@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: smartpark-deployment
+  labels:
+    app: smartpark
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: smartpark
+
+  template:
+    metadata:
+      labels:
+        app: smartpark
+
+    spec:
+      imagePullSecrets:
+        - name: acr-secret
+      containers:
+        - name: smartpark-container
+          # Use ACR image instead of local
+          image: smartparkacr1305.azurecr.io/smartpark-app:latest
+
+          # Pull from ACR (not local)
+          imagePullPolicy: Always
+
+          ports:
+            - containerPort: 5000
+
+          # Load environment variables from secret
+          envFrom:
+            - secretRef:
+                name: smartpark-secrets
+
+          # Resource limits
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          # Readiness probe
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+          # Liveness probe
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 5000
+            initialDelaySeconds: 30
+            periodSeconds: 20

@@ -101,6 +101,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/slots', slotRoutes);
 app.use('/api/bookings', bookingRoutes);
 
+// Kubernetes health check route
+app.get('/api/health', (req, res) => {
+    res.status(200).json({
+        status: 'SmartPark API running ✅',
+        timestamp: new Date(),
+    });
+});
+
 // ── Serve React Build ─────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'client/build')));
 

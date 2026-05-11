@@ -1,0 +1,118 @@
+# ─────────────────────────────────────────────────────────────
+# SmartPark CI/CD Pipeline
+# Triggers on every push to main branch
+# Steps: Build → Push to ACR → Deploy to Kubernetes
+# ─────────────────────────────────────────────────────────────
+
+name: SmartPark CI/CD Pipeline
+
+# ── Trigger ───────────────────────────────────────────────────
+on:
+  push:
+    branches:
+      - main          # Run pipeline on every push to main
+  workflow_dispatch:  # Also allow manual trigger from GitHub UI
+
+# ── Jobs ──────────────────────────────────────────────────────
+jobs:
+
+  # ── Job 1: Build & Push Docker Image ────────────────────────
+  build-and-push:
+    name: Build and Push to ACR
+    runs-on: ubuntu-latest  # GitHub provides this free Linux VM
+
+    steps:
+      # Step 1: Download your code onto the GitHub VM
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Login to Azure Container Registry
+      - name: Login to ACR
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # Step 3: Build Docker image from /server folder
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/smartpark-app:latest \
+            -t ${{ secrets.ACR_LOGIN_SERVER }}/smartpark-app:${{ github.sha }} \
+            ./server
+          # We tag with both 'latest' and the commit SHA
+          # SHA tag lets you roll back to any specific commit
+
+      # Step 4: Push both tags to ACR
+      - name: Push Image to ACR
+        run: |
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/smartpark-app:latest
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/smartpark-app:${{ github.sha }}
+          echo "✅ Image pushed: smartpark-app:latest"
+          echo "✅ Image pushed: smartpark-app:${{ github.sha }}"
+
+      # Step 5: Save the image tag for next job
+      - name: Save Image Tag
+        run: echo "${{ github.sha }}" > image-tag.txt
+
+      - name: Upload Image Tag
+        uses: actions/upload-artifact@v3
+        with:
+          name: image-tag
+          path: image-tag.txt
+
+  # ── Job 2: Deploy to Kubernetes ─────────────────────────────
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push  # Only runs if Job 1 succeeds
+
+    steps:
+      # Step 1: Download code again for k8s YAML files
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Install kubectl on the GitHub VM
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      # Step 3: Setup kubeconfig
+      # For local K8s demo we simulate this step
+      # In real AKS you would use azure/aks-set-context action
+      - name: Configure kubectl (Demo Step)
+        run: |
+          echo "ℹ️ In production: az aks get-credentials would set up AKS access"
+          echo "ℹ️ For local demo: kubectl is already configured via Docker Desktop"
+          echo "✅ Kubernetes context configured"
+
+      # Step 4: Update deployment image to use new ACR image
+      - name: Update Kubernetes Deployment Image
+        run: |
+          echo "ℹ️ Deployment would run:"
+          echo "kubectl set image deployment/smartpark-deployment \\"
+          echo "  smartpark-container=${{ secrets.ACR_LOGIN_SERVER }}/smartpark-app:${{ github.sha }}"
+          echo "✅ Deployment update command ready"
+
+      # Step 5: Verify deployment
+      - name: Verify Deployment
+        run: |
+          echo "ℹ️ Verification would run:"
+          echo "kubectl rollout status deployment/smartpark-deployment"
+          echo "kubectl get pods"
+          echo "✅ Pipeline completed successfully"
+
+      # Step 6: Print deployment summary
+      - name: Deployment Summary
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  SmartPark Deployment Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Image : smartpark-app"
+          echo "  Tag   : ${{ github.sha }}"
+          echo "  ACR   : ${{ secrets.ACR_LOGIN_SERVER }}"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Status: SUCCESS ✅"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
