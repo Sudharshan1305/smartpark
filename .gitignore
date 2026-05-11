@@ -1,19 +1,20 @@
-# Node modules (never commit these)
+# Node modules
 node_modules/
 server/node_modules/
 client/node_modules/
 
-# Environment files (never commit secrets)
+# Environment files
 server/.env
 .env
 
 # React build output
-#client/build/
-
-# OS files
-.DS_Store
-Thumbs.db
+client/build/
+server/client/build/
 
 # Logs
 *.log
 npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
